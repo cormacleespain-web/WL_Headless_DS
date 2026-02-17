@@ -1,0 +1,514 @@
+{
+  "$schema": "https://www.designtokens.org/tr/2025.10/schema.json",
+  "$description": "Amber theme: light — headless design tokens.",
+  "wizeline": {
+    "tokens": {
+      "color": {
+        "$type": "color",
+        "palette": {
+          "red": {
+            "darkest": {
+              "$value": "#b45309"
+            },
+            "dark": {
+              "$value": "#d97706"
+            },
+            "base": {
+              "$value": "#f59e0b"
+            },
+            "light": {
+              "$value": "#fbbf24"
+            },
+            "lighter": {
+              "$value": "#fcd34d"
+            },
+            "lighter2": {
+              "$value": "#fde68a"
+            },
+            "lightest": {
+              "$value": "#fef3c7"
+            }
+          },
+          "neutral": {
+            "darkest": {
+              "$value": "#44403c"
+            },
+            "darker2": {
+              "$value": "#57534e"
+            },
+            "darker": {
+              "$value": "#5c5a54"
+            },
+            "base": {
+              "$value": "#fefce8"
+            },
+            "lighter": {
+              "$value": "#fefde1"
+            },
+            "lightest": {
+              "$value": "#fffbeb"
+            }
+          },
+          "cool": {
+            "darkest": {
+              "$value": "#8ca2a1"
+            },
+            "darker": {
+              "$value": "#adbdbc"
+            },
+            "base": {
+              "$value": "#ced7d6"
+            },
+            "lighter": {
+              "$value": "#ecefef"
+            },
+            "lightest": {
+              "$value": "#f3f3f3"
+            }
+          },
+          "contrast": {
+            "black": {
+              "$value": "#211E1E"
+            },
+            "white": {
+              "$value": "#FFFFFF"
+            }
+          },
+          "blues": {
+            "darker": {
+              "$value": "#1366B1"
+            },
+            "lighter": {
+              "$value": "#26BDFB"
+            }
+          },
+          "highlight": {
+            "lime": {
+              "$value": "#DDFD58"
+            },
+            "mint": {
+              "$value": "#DDFD58"
+            },
+            "lilac": {
+              "$value": "#8021F8"
+            }
+          }
+        },
+        "semantic": {
+          "fg": {
+            "default": {
+              "$value": "{wizeline.tokens.color.palette.contrast.black}"
+            },
+            "muted": {
+              "$value": "{wizeline.tokens.color.palette.neutral.darkest}"
+            },
+            "inverse": {
+              "$value": "{wizeline.tokens.color.palette.contrast.white}"
+            }
+          },
+          "bg": {
+            "canvas": {
+              "$value": "{wizeline.tokens.color.palette.contrast.white}"
+            },
+            "surface": {
+              "$value": "{wizeline.tokens.color.palette.neutral.base}"
+            },
+            "surfaceAlt": {
+              "$value": "{wizeline.tokens.color.palette.neutral.lighter}"
+            },
+            "subtle": {
+              "$value": "{wizeline.tokens.color.palette.neutral.lightest}"
+            }
+          },
+          "border": {
+            "subtle": {
+              "$value": "{wizeline.tokens.color.palette.neutral.darker}"
+            },
+            "default": {
+              "$value": "{wizeline.tokens.color.palette.neutral.darker2}"
+            },
+            "strong": {
+              "$value": "{wizeline.tokens.color.palette.neutral.darkest}"
+            }
+          },
+          "brand": {
+            "primary": {
+              "$value": "{wizeline.tokens.color.palette.red.base}"
+            },
+            "primaryStrong": {
+              "$value": "{wizeline.tokens.color.palette.red.dark}"
+            },
+            "primarySoft": {
+              "$value": "{wizeline.tokens.color.palette.red.lightest}"
+            }
+          },
+          "accent": {
+            "blueStrong": {
+              "$value": "{wizeline.tokens.color.palette.blues.darker}"
+            },
+            "blueSoft": {
+              "$value": "{wizeline.tokens.color.palette.blues.lighter}"
+            },
+            "highlightLime": {
+              "$value": "{wizeline.tokens.color.palette.highlight.lime}"
+            },
+            "highlightMint": {
+              "$value": "{wizeline.tokens.color.palette.highlight.mint}"
+            },
+            "highlightLilac": {
+              "$value": "{wizeline.tokens.color.palette.highlight.lilac}"
+            }
+          }
+        }
+      },
+      "fontFamily": {
+        "$type": "fontFamily",
+        "spaceMono": {
+          "$value": "Space Mono"
+        },
+        "nunitoSans": {
+          "$value": "Nunito Sans"
+        }
+      },
+      "typography": {
+        "$type": "typography",
+        "hero": {
+          "main": {
+            "$description": "Exclusive for Website's Main Hero Title in Homepage",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "112px",
+              "lineHeight": "80%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "large": {
+            "$description": "Exclusive for Website's Regular Hero Title",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "96px",
+              "lineHeight": "80%",
+              "letterSpacing": "0.25%",
+              "fontWeight": "Bold"
+            }
+          },
+          "medium": {
+            "$description": "Exclusive for Website's Main Hero Slide Number in Homepage",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "80px",
+              "lineHeight": "120%",
+              "letterSpacing": "0.25%",
+              "fontWeight": "Regular"
+            }
+          }
+        },
+        "title": {
+          "xLarge": {
+            "$description": "Exclusive for Website's Subheadings",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "80px",
+              "lineHeight": "120%",
+              "letterSpacing": "0.25%",
+              "fontWeight": "Regular"
+            }
+          },
+          "large": {
+            "$description": "Page Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "56px",
+              "lineHeight": "120%",
+              "letterSpacing": "0.25%",
+              "fontWeight": "Regular"
+            }
+          },
+          "medium": {
+            "$description": "Page Titles, Section Titles, Pull Quotes and Modal Popup Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "48px",
+              "lineHeight": "120%",
+              "letterSpacing": "0.25%",
+              "fontWeight": "Regular"
+            }
+          },
+          "small": {
+            "$description": "Page Titles, Section Titles, Pull Quotes and Modal Popup Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "40px",
+              "lineHeight": "120%",
+              "letterSpacing": "0.25%",
+              "fontWeight": "Regular"
+            }
+          }
+        },
+        "sectionTitle": {
+          "xLargeBold": {
+            "$description": "Page Titles, Section Titles, Pull Quotes and Modal Popup Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "36px",
+              "lineHeight": "120%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "xLarge": {
+            "$description": "Page Titles, Section Titles, Pull Quotes and Modal Popup Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "36px",
+              "lineHeight": "120%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "largeBold": {
+            "$description": "Page Titles, Section Titles, Pull Quotes and Modal Popup Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "30px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "large": {
+            "$description": "Page Titles, Section Titles, Pull Quotes and Modal Popup Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "30px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "mediumBold": {
+            "$description": "Section Titles, Content Headers, Card Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "24px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "medium": {
+            "$description": "Section Titles, Content Headers, Card Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "24px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "smallBold": {
+            "$description": "Card Text, Subtitles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "20px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "small": {
+            "$description": "Card Text, Subtitles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "20px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          }
+        },
+        "text": {
+          "largeBold": {
+            "$description": "Card Text, Subtitles, Body Content, emphasized words",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "18px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "large": {
+            "$description": "Card Text, Subtitles, Body Content",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "18px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "bold": {
+            "$description": "Body Content, emphasized words",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "16px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "base": {
+            "$description": "Body Content",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "16px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "variantBold": {
+            "$description": "Body Content, emphasized words",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "16px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "variant": {
+            "$description": "Body Content",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "16px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "xSmallBold": {
+            "$description": "Small links, disclaimer, legal, emphasized words",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "14px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "xSmall": {
+            "$description": "Small links, disclaimer, legal",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "14px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "xSmallItalic": {
+            "$description": "Small links, disclaimer, legal",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "14px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Italic"
+            }
+          },
+          "tinyBold": {
+            "$description": "Small links, disclaimer, legal, emphasized words",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "10px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "tiny": {
+            "$description": "Small links, disclaimer, legal",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "10px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "tinyItalic": {
+            "$description": "Small links, disclaimer, legal",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.nunitoSans}",
+              "fontSize": "10px",
+              "lineHeight": "150%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Italic"
+            }
+          }
+        },
+        "accent": {
+          "xLargeBold": {
+            "$description": "Section Titles, Content Headers, Card Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "24px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Bold"
+            }
+          },
+          "xLarge": {
+            "$description": "Section Titles, Content Headers, Card Titles",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "24px",
+              "lineHeight": "130%",
+              "letterSpacing": "0.5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "large": {
+            "$description": "Buttons, Text Links, Eyebrows, Labels, Tags",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "16px",
+              "lineHeight": "150%",
+              "letterSpacing": "5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "medium": {
+            "$description": "Buttons, Text Links, Eyebrows, Labels, Tags",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "14px",
+              "lineHeight": "150%",
+              "letterSpacing": "5%",
+              "fontWeight": "Regular"
+            }
+          },
+          "small": {
+            "$description": "Small links, disclaimer, legal, Eyebrows, Labels, Tags",
+            "$value": {
+              "fontFamily": "{wizeline.tokens.fontFamily.spaceMono}",
+              "fontSize": "12px",
+              "lineHeight": "150%",
+              "letterSpacing": "5%",
+              "fontWeight": "Regular"
+            }
+          }
+        }
+      },
+      "iconography": {
+        "library": {
+          "$type": "string",
+          "$value": "Material Icons"
+        }
+      }
+    }
+  }
+}

@@ -1,83 +1,28 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Theme } from '@radix-ui/themes';
+import { getThemeTokenJson, mergeTokenSetWithDefault, DEFAULT_APPEARANCE_PER_THEME } from './tokens/themeTokens.js';
+import { resolveThemeTokens, tokensToCssVariables, inferRadixFromTokens, getThemeAccentColor } from './tokenResolver.js';
 
 /*
  * ThemeContext and ThemeProvider
  *
- * This context centralises theme state for the application. It holds both
- * predefined themes and user‑generated themes (via the AI theme generator).
- * The state persists through localStorage so that a visitor's selection
- * survives page reloads. All properties passed to the Radix <Theme> component
- * are strongly typed and validated before use, avoiding injection of
- * arbitrary values. See Radix documentation for available props: appearance,
- * accentColor, grayColor, panelBackground, radius and scaling【229135955971718†L52-L124】.
+ * Centralises theme state using Wizeline design-token format (wizeline.tokens).
+ * Built-in themes are token-driven; custom/AI themes can store full tokenSet JSON.
+ * Resolved tokens are injected as CSS variables (--wz-*) and Radix <Theme> receives
+ * inferred appearance/accent for component styling.
  */
 
 const DEFAULT_THEMES = [
-  {
-    id: 'default',
-    name: 'Default',
-    config: {
-      appearance: 'light',
-      accentColor: 'red',
-      grayColor: 'auto',
-      radius: 'medium',
-      scaling: '100%',
-      panelBackground: 'translucent',
-    },
-  },
-  {
-    id: 'indigo-light',
-    name: 'Indigo Light',
-    config: {
-      appearance: 'light',
-      accentColor: 'indigo',
-      grayColor: 'auto',
-      radius: 'medium',
-      scaling: '100%',
-      panelBackground: 'translucent',
-    },
-  },
-  {
-    id: 'sky-dark',
-    name: 'Sky Dark',
-    config: {
-      appearance: 'dark',
-      accentColor: 'sky',
-      grayColor: 'auto',
-      radius: 'medium',
-      scaling: '100%',
-      panelBackground: 'translucent',
-    },
-  },
-  {
-    id: 'amber-light',
-    name: 'Amber Light',
-    config: {
-      appearance: 'light',
-      accentColor: 'amber',
-      grayColor: 'auto',
-      radius: 'medium',
-      scaling: '100%',
-      panelBackground: 'translucent',
-    },
-  },
-  {
-    id: 'crimson-dark',
-    name: 'Crimson Dark',
-    config: {
-      appearance: 'dark',
-      accentColor: 'crimson',
-      grayColor: 'auto',
-      radius: 'medium',
-      scaling: '100%',
-      panelBackground: 'translucent',
-    },
-  },
+  { id: 'default', name: 'Wizeline' },
+  { id: 'indigo', name: 'Indigo' },
+  { id: 'sky', name: 'Sky' },
+  { id: 'amber', name: 'Amber' },
+  { id: 'crimson', name: 'Crimson' },
 ];
 
 const STORAGE_KEY = 'radix-demo-theme';
 const STORAGE_MY_THEMES = 'radix-demo-my-themes';
+const STORAGE_APPEARANCE = 'radix-demo-appearance';
 
 // Create the context with sensible defaults. Consumers will throw if used
 // outside of ThemeProvider.
@@ -95,17 +40,22 @@ export const useTheme = () => useContext(ThemeContext);
 export const ThemeProvider = ({ children }) => {
   const [theme, setThemeState] = useState(DEFAULT_THEMES[0]);
   const [myThemes, setMyThemes] = useState([]);
+  const [userAppearance, setUserAppearanceState] = useState(null);
 
-  // Load persisted theme and custom themes from localStorage on mount.
+  // Load persisted theme, custom themes, and mode (Light/Dark) from localStorage on mount.
   useEffect(() => {
     try {
       const savedTheme = JSON.parse(localStorage.getItem(STORAGE_KEY));
       const savedMyThemes = JSON.parse(localStorage.getItem(STORAGE_MY_THEMES));
-      if (savedTheme && isValidThemeConfig(savedTheme.config)) {
-        setThemeState(savedTheme);
+      const savedAppearance = localStorage.getItem(STORAGE_APPEARANCE);
+      if (savedTheme && isValidTheme(savedTheme)) {
+        setThemeState(normalizeTheme(savedTheme));
       }
       if (Array.isArray(savedMyThemes)) {
-        setMyThemes(savedMyThemes.filter((t) => isValidThemeConfig(t.config)));
+        setMyThemes(savedMyThemes.filter(isValidTheme).map(normalizeTheme));
+      }
+      if (savedAppearance === 'light' || savedAppearance === 'dark') {
+        setUserAppearanceState(savedAppearance);
       }
     } catch (e) {
       console.warn('Failed to load theme from localStorage', e);
@@ -129,36 +79,74 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [myThemes]);
 
+  useEffect(() => {
+    if (userAppearance) {
+      try {
+        localStorage.setItem(STORAGE_APPEARANCE, userAppearance);
+      } catch (e) {
+        console.warn('Failed to persist appearance to localStorage', e);
+      }
+    }
+  }, [userAppearance]);
+
   const setTheme = (newTheme) => {
-    if (isValidThemeConfig(newTheme.config)) {
+    if (isValidTheme(newTheme)) {
       setThemeState(newTheme);
     }
   };
 
   const setThemeConfig = (partial) => {
+    if (partial.appearance !== undefined) {
+      setUserAppearanceState(partial.appearance);
+    }
     setThemeState((prev) => {
-      const nextConfig = mergeWithDefaults({ ...prev.config, ...partial });
+      const nextConfig = mergeWithDefaults({ ...(prev.config || {}), ...partial });
       if (!isValidThemeConfig(nextConfig)) return prev;
       return { ...prev, config: nextConfig };
     });
   };
 
   const addCustomTheme = (themeObj) => {
-    if (isValidThemeConfig(themeObj.config)) {
-      // Ensure ID uniqueness by prefixing a timestamp.
-      const id = `${Date.now()}-${themeObj.name}`;
+    if (isValidTheme(themeObj)) {
+      const id = themeObj.id || `${Date.now()}-${themeObj.name}`;
       const themeToAdd = { ...themeObj, id };
       setMyThemes((prev) => [...prev, themeToAdd]);
       setThemeState(themeToAdd);
     }
   };
 
-  const merged = mergeWithDefaults(theme.config);
-  const { fontFamily, fontWeight = 400, fontStyle = 'normal', ...radixConfig } = merged;
+  // Effective mode: user's Light/Dark choice (persisted) so switching theme keeps the same mode.
+  const effectiveAppearance = userAppearance ?? theme?.config?.appearance ?? (theme?.id && DEFAULT_APPEARANCE_PER_THEME[theme.id]) ?? 'light';
+  const tokenJson = theme?.tokenSet ? mergeTokenSetWithDefault(theme.tokenSet) : getThemeTokenJson(theme?.id, effectiveAppearance);
+  const resolvedTokens = tokenJson?.wizeline ? resolveThemeTokens(tokenJson) : {};
+  const radixFromTokens = Object.keys(resolvedTokens).length > 0 ? inferRadixFromTokens(resolvedTokens, theme?.id) : null;
+  const merged = theme?.config ? mergeWithDefaults(theme.config) : mergeWithDefaults(radixFromTokens || {});
+  const { fontFamily, fontWeight = 400, fontStyle = 'normal', ...baseRadixConfig } = merged;
+  const radixConfig = { ...baseRadixConfig, appearance: effectiveAppearance };
 
-  // Load Google Font with weight/italic variants when theme requests it
+  // Inject Wizeline token CSS variables — recompute from current theme + Mode (appearance)
   useEffect(() => {
-    if (!fontFamily) return;
+    const tokenSet = theme?.tokenSet ? mergeTokenSetWithDefault(theme.tokenSet) : getThemeTokenJson(theme?.id, effectiveAppearance);
+    const resolved = tokenSet?.wizeline ? resolveThemeTokens(tokenSet) : {};
+    const vars = tokensToCssVariables(resolved);
+    const id = 'radix-demo-wizeline-tokens';
+    let styleEl = document.getElementById(id);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = id;
+      document.head.appendChild(styleEl);
+    }
+    const decl = Object.entries(vars).map(([k, v]) => `${k}: ${v};`).join('\n');
+    styleEl.textContent = decl ? `:root {\n  ${decl}\n}` : '';
+    return () => { styleEl.textContent = ''; };
+  }, [theme?.id, theme?.tokenSet, effectiveAppearance]);
+
+  // Load Google Fonts from token set (Space Mono, Nunito Sans) or from config
+  const bodyFont = resolvedTokens['wizeline.tokens.fontFamily.nunitoSans'] || fontFamily;
+  const headingFont = resolvedTokens['wizeline.tokens.fontFamily.spaceMono'] || fontFamily;
+  useEffect(() => {
+    const families = [bodyFont, headingFont].filter(Boolean);
+    if (families.length === 0) return;
     const id = 'radix-demo-google-font';
     let link = document.getElementById(id);
     if (!link) {
@@ -167,13 +155,12 @@ export const ThemeProvider = ({ children }) => {
       link.rel = 'stylesheet';
       document.head.appendChild(link);
     }
-    // Request common variants so user can switch weight/style: normal 300,400,500,600,700 + italic 400,700
-    const familyParam = encodeURIComponent(fontFamily).replace(/%20/g, '+');
-    link.href = `https://fonts.googleapis.com/css2?family=${familyParam}:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,700&display=swap`;
+    const query = [...new Set(families)].map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,700`).join('&');
+    link.href = `https://fonts.googleapis.com/css2?${query}&display=swap`;
     return () => { link.href = ''; };
-  }, [fontFamily]);
+  }, [bodyFont, headingFont]);
 
-  // Inject overrides so they apply to .radix-themes (Radix sets typography vars on that class)
+  // Typography overrides for .radix-themes
   useEffect(() => {
     const id = 'radix-demo-typography-overrides';
     let styleEl = document.getElementById(id);
@@ -184,16 +171,31 @@ export const ThemeProvider = ({ children }) => {
     }
     const w = Number(fontWeight) || 400;
     const s = fontStyle || 'normal';
-    const familyDecl = fontFamily
-      ? `--default-font-family: '${fontFamily.replace(/'/g, "\\'")}', sans-serif; --heading-font-family: '${fontFamily.replace(/'/g, "\\'")}', sans-serif;`
-      : '';
-    styleEl.textContent = `.radix-themes { ${familyDecl} --default-font-weight: ${w}; --heading-font-weight: ${w}; --default-font-style: ${s}; --heading-font-style: ${s}; }`;
+    const family = bodyFont || fontFamily;
+    const heading = headingFont || fontFamily;
+    const familyDecl = family ? `--default-font-family: '${String(family).replace(/'/g, "\\'")}', sans-serif;` : '';
+    const headingDecl = heading ? `--heading-font-family: '${String(heading).replace(/'/g, "\\'")}', sans-serif;` : '';
+    styleEl.textContent = `.radix-themes { ${familyDecl} ${headingDecl} --default-font-weight: ${w}; --heading-font-weight: ${w}; --default-font-style: ${s}; --heading-font-style: ${s}; }`;
     return () => { styleEl.textContent = ''; };
-  }, [fontFamily, fontWeight, fontStyle]);
+  }, [bodyFont, headingFont, fontFamily, fontWeight, fontStyle]);
+
+  // Use effectiveAppearance so Mode toggle matches the appearance we actually apply (fixes Sky showing light while toggle showed dark).
+  const effectiveConfig = { ...(theme?.config ? mergeWithDefaults(theme.config) : mergeWithDefaults(radixFromTokens || {})), appearance: effectiveAppearance };
 
   return (
     <ThemeContext.Provider
-      value={{ theme, myThemes, setTheme, setThemeConfig, addCustomTheme, defaultThemes: DEFAULT_THEMES }}
+      value={{
+        theme,
+        myThemes,
+        setTheme,
+        setThemeConfig,
+        addCustomTheme,
+        defaultThemes: DEFAULT_THEMES,
+        resolvedTokens,
+        effectiveConfig,
+        getThemeTokenJson,
+        getThemeAccentColor,
+      }}
     >
       <Theme {...radixConfig}>{children}</Theme>
     </ThemeContext.Provider>
@@ -248,6 +250,25 @@ const DEFAULT_CONFIG = {
   fontWeight: 400,
   fontStyle: 'normal',
 };
+
+const BUILT_IN_IDS = ['default', 'indigo', 'sky', 'amber', 'crimson'];
+const LEGACY_THEME_IDS = ['indigo-light', 'sky-dark', 'amber-light', 'crimson-dark'];
+const LEGACY_TO_BASE = { 'indigo-light': 'indigo', 'sky-dark': 'sky', 'amber-light': 'amber', 'crimson-dark': 'crimson' };
+
+function normalizeTheme(theme) {
+  if (!theme?.id) return theme;
+  const baseId = LEGACY_TO_BASE[theme.id] ?? theme.id;
+  const defaultTheme = DEFAULT_THEMES.find((t) => t.id === baseId);
+  return { ...theme, id: baseId, name: theme.name || defaultTheme?.name || theme.id };
+}
+
+function isValidTheme(theme) {
+  if (!theme || !theme.id || !theme.name) return false;
+  if (BUILT_IN_IDS.includes(theme.id) || LEGACY_THEME_IDS.includes(theme.id)) return true;
+  if (theme.tokenSet?.wizeline?.tokens) return true;
+  if (theme.config) return isValidThemeConfig(theme.config);
+  return false;
+}
 
 function isValidThemeConfig(config) {
   if (!config || !VALID_APPEARANCE.includes(config.appearance) || !VALID_ACCENT.includes(config.accentColor)) {

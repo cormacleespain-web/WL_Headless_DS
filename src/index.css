@@ -1,9 +1,9 @@
-/* Global styles */
+/* Global styles — Wizeline tokens when available, else Radix defaults */
 body {
   margin: 0;
-  font-family: var(--font-sans);
-  background-color: var(--color-panel);
-  color: var(--color-foreground);
+  font-family: var(--wz-font-nunitoSans, var(--font-sans));
+  background-color: var(--wz-color-semantic-bg-canvas, var(--color-panel));
+  color: var(--wz-color-semantic-fg-default, var(--color-foreground));
 }
 button {
   font-family: inherit;
@@ -91,12 +91,64 @@ button {
     0 0 48px -12px var(--accent-a3) !important;
 }
 
-/* Glass-like card — theme-aware, translucent with blur */
+/* Theme panel floating action bubbles — circular, dock-style at bottom */
+.theme-panel-bubbles {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+}
+.theme-panel-bubble {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: var(--color-panel-solid) !important;
+  border: 1px solid var(--gray-a5) !important;
+  box-shadow: 0 2px 8px var(--gray-a5);
+}
+.theme-panel-bubble:hover:not(:disabled) {
+  background: var(--gray-a3) !important;
+  box-shadow: 0 4px 12px var(--gray-a5);
+}
+.theme-panel-bubble:disabled {
+  opacity: 0.5;
+}
+
+/* AI prompt textarea: match reference — borderless, generous padding, blends with container */
+.theme-panel-ai-textarea,
+.theme-panel-ai-textarea textarea {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 12px;
+}
+.theme-panel-ai-textarea textarea {
+  min-height: 40px;
+  padding: 8px 0 !important;
+  overflow-y: auto;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.theme-panel-ai-textarea:focus-within {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Cursor-style chat entry: prominent circular Send, subtle bottom bar */
+.theme-panel-ai-send-button {
+  border-radius: 50% !important;
+  flex-shrink: 0;
+}
+
+/* Glass-like card — Wizeline semantic tokens when available */
 .glass-card {
-  background: color-mix(in srgb, var(--color-panel-solid) 72%, transparent);
+  background: color-mix(in srgb, var(--wz-color-semantic-bg-surface, var(--color-panel-solid)) 72%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--gray-a5);
+  border: 1px solid var(--wz-color-semantic-border-subtle, var(--gray-a5));
   border-radius: var(--radius-4);
   box-shadow: 0 8px 32px var(--gray-a8);
 }

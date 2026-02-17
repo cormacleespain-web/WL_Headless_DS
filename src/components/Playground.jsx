@@ -42,25 +42,23 @@ import {
   Popover,
   RadioGroup,
 } from '@radix-ui/themes';
-import {
-  Pencil1Icon,
-  MagnifyingGlassIcon,
-  StarIcon,
-  ArrowUpIcon,
-  BellIcon,
-  DotsVerticalIcon,
-  EnvelopeClosedIcon,
-  EnvelopeOpenIcon,
-  BarChartIcon,
-  BookmarkIcon,
-  PersonIcon,
-  CardStackIcon,
-  LightningBoltIcon,
-  ExclamationTriangleIcon,
-  CircleBackslashIcon,
-  InfoCircledIcon,
-  ChevronDownIcon,
-} from '@radix-ui/react-icons';
+import Brush from '@mui/icons-material/Brush';
+import Search from '@mui/icons-material/Search';
+import Star from '@mui/icons-material/Star';
+import Upload from '@mui/icons-material/Upload';
+import Notifications from '@mui/icons-material/Notifications';
+import MoreVert from '@mui/icons-material/MoreVert';
+import Mail from '@mui/icons-material/Mail';
+import MarkEmailRead from '@mui/icons-material/MarkEmailRead';
+import BarChart from '@mui/icons-material/BarChart';
+import Bookmark from '@mui/icons-material/Bookmark';
+import Person from '@mui/icons-material/Person';
+import CreditCard from '@mui/icons-material/CreditCard';
+import Bolt from '@mui/icons-material/Bolt';
+import Warning from '@mui/icons-material/Warning';
+import Block from '@mui/icons-material/Block';
+import Info from '@mui/icons-material/Info';
+import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 
 function Section({ title, docLink, children }) {
   return (
@@ -86,7 +84,7 @@ function WidgetCard({ title, subtitle, children }) {
         </Box>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
-            <IconButton variant="ghost" size="1"><DotsVerticalIcon width={14} height={14} /></IconButton>
+            <IconButton variant="ghost" size="1"><MoreVert sx={{ fontSize: 14 }} /></IconButton>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
             <DropdownMenu.Item>Edit</DropdownMenu.Item>
@@ -101,7 +99,12 @@ function WidgetCard({ title, subtitle, children }) {
 
 function DashboardExample() {
   const [plan, setPlan] = useState({ branding: false, marketing: true, web: false, app: false });
-  const iconSize = { width: 18, height: 18 };
+  const iconSx = { fontSize: 18 };
+  const tokenCardStyle = {
+    background: 'var(--wz-color-semantic-bg-surface, var(--color-panel))',
+    border: '1px solid var(--wz-color-semantic-border-subtle, var(--gray-a5))',
+    color: 'var(--wz-color-semantic-fg-default, inherit)',
+  };
   return (
     <Box pt="5" pb="8" style={{ width: '100%', minWidth: 0 }}>
       {/* Top bar: search + actions — responsive, wraps on narrow viewports */}
@@ -119,7 +122,7 @@ function DashboardExample() {
             style={{ width: '100%' }}
           >
             <TextField.Slot side="left">
-              <MagnifyingGlassIcon {...iconSize} />
+              <Search sx={iconSx} />
             </TextField.Slot>
           </TextField.Root>
         </Box>
@@ -130,34 +133,34 @@ function DashboardExample() {
           style={{ flexShrink: 0 }}
         >
           <IconButton variant="ghost" size="2" aria-label="Bookmark">
-            <StarIcon {...iconSize} />
+            <Star sx={iconSx} />
           </IconButton>
           <IconButton variant="ghost" size="2" aria-label="Upload">
-            <ArrowUpIcon {...iconSize} />
+            <Upload sx={iconSx} />
           </IconButton>
           <IconButton variant="ghost" size="2" aria-label="Alerts">
-            <ExclamationTriangleIcon {...iconSize} />
+            <Warning sx={iconSx} />
           </IconButton>
           <IconButton variant="ghost" size="2" aria-label="Notifications">
-            <BellIcon {...iconSize} />
+            <Notifications sx={iconSx} />
           </IconButton>
           <Avatar size="2" radius="full" fallback="U" alt="User" />
         </Flex>
       </Flex>
 
-      {/* KPI cards — stacks on narrow viewports */}
+      {/* KPI cards — use theme semantic tokens when available */}
       <Flex gap="3" wrap="wrap" mb="6" style={{ width: '100%' }}>
         {[
-          { icon: <EnvelopeClosedIcon {...iconSize} />, value: '$13.4k', label: 'Total Sales', change: '+38%', positive: true, tag: 'Last 6 months' },
-          { icon: <BarChartIcon {...iconSize} />, value: '155K', label: 'Total Orders', change: '+22%', positive: true, tag: 'Last 4 months' },
-          { icon: <BarChartIcon {...iconSize} />, value: '$89.34k', label: 'Total Profit', change: '-16%', positive: false, tag: 'Last One year' },
-          { icon: <BookmarkIcon {...iconSize} />, value: '$1,200', label: 'Bookmarks', change: '+38%', positive: true, tag: 'Last 6 months' },
-          { icon: <PersonIcon {...iconSize} />, value: '42.4k', label: 'Customers', change: '+9.2%', positive: true, tag: 'Daily customers' },
+          { icon: <Mail sx={iconSx} />, value: '$13.4k', label: 'Total Sales', change: '+38%', positive: true, tag: 'Last 6 months' },
+          { icon: <BarChart sx={iconSx} />, value: '155K', label: 'Total Orders', change: '+22%', positive: true, tag: 'Last 4 months' },
+          { icon: <BarChart sx={iconSx} />, value: '$89.34k', label: 'Total Profit', change: '-16%', positive: false, tag: 'Last One year' },
+          { icon: <Bookmark sx={iconSx} />, value: '$1,200', label: 'Bookmarks', change: '+38%', positive: true, tag: 'Last 6 months' },
+          { icon: <Person sx={iconSx} />, value: '42.4k', label: 'Customers', change: '+9.2%', positive: true, tag: 'Daily customers' },
         ].map((kpi, i) => (
-          <Card key={i} size="2" style={{ flex: '1 1 160px', minWidth: 140 }}>
+          <Card key={i} size="2" style={{ flex: '1 1 160px', minWidth: 140, ...tokenCardStyle }}>
             <Flex direction="column" gap="2">
               <Flex align="center" gap="2">
-                <Box style={{ color: 'var(--accent-11)' }}>{kpi.icon}</Box>
+                <Box style={{ color: 'var(--wz-color-semantic-brand-primary, var(--accent-11))' }}>{kpi.icon}</Box>
                 <Badge size="1" color="gray" variant="soft">{kpi.tag}</Badge>
               </Flex>
               <Text size="6" weight="bold">{kpi.value}</Text>
@@ -182,14 +185,14 @@ function DashboardExample() {
         </WidgetCard>
         <WidgetCard title="Report" subtitle="Weekly activity">
           <Flex direction="column" gap="3" mt="2">
-            <Flex justify="between" align="center"><Flex align="center" gap="2"><EnvelopeClosedIcon {...iconSize} /> <Text>Income</Text></Flex><Flex align="center" gap="2"><Text weight="bold">$5,550</Text><Badge color="green" size="1">+2.34K</Badge></Flex></Flex>
-            <Flex justify="between" align="center"><Flex align="center" gap="2"><CardStackIcon {...iconSize} /> <Text>Expense</Text></Flex><Flex align="center" gap="2"><Text weight="bold">$3,520</Text><Badge color="red" size="1">-1.4K</Badge></Flex></Flex>
-            <Flex justify="between" align="center"><Flex align="center" gap="2"><BarChartIcon {...iconSize} /> <Text>Profit</Text></Flex><Flex align="center" gap="2"><Text weight="bold">$2,350</Text><Badge color="green" size="1">+3.22K</Badge></Flex></Flex>
+            <Flex justify="between" align="center"><Flex align="center" gap="2"><Mail sx={iconSx} /> <Text>Income</Text></Flex><Flex align="center" gap="2"><Text weight="bold">$5,550</Text><Badge color="green" size="1">+2.34K</Badge></Flex></Flex>
+            <Flex justify="between" align="center"><Flex align="center" gap="2"><CreditCard sx={iconSx} /> <Text>Expense</Text></Flex><Flex align="center" gap="2"><Text weight="bold">$3,520</Text><Badge color="red" size="1">-1.4K</Badge></Flex></Flex>
+            <Flex justify="between" align="center"><Flex align="center" gap="2"><BarChart sx={iconSx} /> <Text>Profit</Text></Flex><Flex align="center" gap="2"><Text weight="bold">$2,350</Text><Badge color="green" size="1">+3.22K</Badge></Flex></Flex>
           </Flex>
         </WidgetCard>
         <WidgetCard title="Monthly campaign state" subtitle="7.58k Social Visitors">
           <Flex direction="column" gap="2" mt="2">
-            {[{ icon: <EnvelopeClosedIcon {...iconSize} />, label: 'Emails', count: '14,250', pct: '0.3%' }, { icon: <EnvelopeOpenIcon {...iconSize} />, label: 'Opened', count: '4,523', pct: '3.1%' }, { icon: <LightningBoltIcon {...iconSize} />, label: 'Clicked', count: '1,250', pct: '1.3%' }, { icon: <BellIcon {...iconSize} />, label: 'Subscribed', count: '750', pct: '9.8%' }, { icon: <ExclamationTriangleIcon {...iconSize} />, label: 'Errors', count: '20', pct: '1.5%' }, { icon: <CircleBackslashIcon {...iconSize} />, label: 'Unsubscribed', count: '86', pct: '0.6%' }].map((r, i) => (
+            {[{ icon: <Mail sx={iconSx} />, label: 'Emails', count: '14,250', pct: '0.3%' }, { icon: <MarkEmailRead sx={iconSx} />, label: 'Opened', count: '4,523', pct: '3.1%' }, { icon: <Bolt sx={iconSx} />, label: 'Clicked', count: '1,250', pct: '1.3%' }, { icon: <Notifications sx={iconSx} />, label: 'Subscribed', count: '750', pct: '9.8%' }, { icon: <Warning sx={iconSx} />, label: 'Errors', count: '20', pct: '1.5%' }, { icon: <Block sx={iconSx} />, label: 'Unsubscribed', count: '86', pct: '0.6%' }].map((r, i) => (
               <Flex key={i} justify="between" align="center"><Flex align="center" gap="2">{r.icon}<Text size="2">{r.label}</Text></Flex><Flex gap="2"><Text size="2">{r.count}</Text><Text size="2" color="gray">{r.pct}</Text></Flex></Flex>
             ))}
           </Flex>
@@ -279,30 +282,25 @@ export default function Playground() {
           <IconButton
             size="3"
             variant="solid"
+            color="accent"
             radius="full"
-            style={{
-              position: 'fixed',
-              bottom: 20,
-              right: 20,
-              zIndex: 10,
-              background: 'var(--red-9)',
-              color: 'var(--red-1)',
-            }}
+            className="theme-panel-fab"
+            style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 10 }}
             onClick={() => setThemePanelOpen(true)}
             aria-label="Open theme panel"
           >
-            <Pencil1Icon width={20} height={20} />
+            <Brush sx={{ fontSize: 20 }} />
           </IconButton>
         </Tooltip>
       )}
 
-      {/* Content area: reserve right space for floating menu when open, center inner container */}
-      <Box style={{ paddingRight: themePanelOpen ? 300 : 0 }}>
+      {/* Content area: reserve right space for floating panel when open (panel width 340 + right 20) */}
+      <Box style={{ paddingRight: themePanelOpen ? 360 : 0 }}>
         <Box p="6" style={{ maxWidth: 900, margin: '0 auto' }}>
           <Flex direction="column" align="center" gap="3" mb="8" style={{ textAlign: 'center' }}>
             <img
               src="/wizeline-logomark.png"
-              alt="Wizeline"
+              alt="Brand logo"
               style={{ height: 48, width: 'auto', display: 'block' }}
             />
             <Heading size="8" weight="bold">The Foundation for your Design System</Heading>
@@ -315,6 +313,7 @@ export default function Playground() {
             <Tabs.List>
               <Tabs.Trigger value="examples">Examples</Tabs.Trigger>
               <Tabs.Trigger value="dashboard">Dashboard</Tabs.Trigger>
+              <Tabs.Trigger value="emea-org-chart">EMEA Org Chart</Tabs.Trigger>
               <Tabs.Trigger value="playground">Playground</Tabs.Trigger>
             </Tabs.List>
 
@@ -341,6 +340,45 @@ export default function Playground() {
               </Flex>
             </AlertDialog.Content>
           </AlertDialog.Root>
+        </Section>
+
+        {/* Theme tokens — semantic colors & typography (all use token colors for dark mode) */}
+        <Section title="Theme tokens" docLink="">
+          <Flex direction="column" gap="6">
+            <Box>
+              <Text size="2" weight="bold" style={{ marginBottom: 8, display: 'block', color: 'var(--wz-color-semantic-fg-muted)' }}>Semantic colors</Text>
+              <Flex gap="2" wrap="wrap">
+                {[
+                  { label: 'fg.default', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-default)' },
+                  { label: 'fg.muted', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-muted)' },
+                  { label: 'fg.inverse', bg: 'var(--wz-color-semantic-fg-default)', color: 'var(--wz-color-semantic-fg-inverse)' },
+                  { label: 'bg.canvas', bg: 'var(--wz-color-semantic-bg-canvas)', color: 'var(--wz-color-semantic-fg-default)', border: '1px solid var(--wz-color-semantic-border-subtle)' },
+                  { label: 'bg.surface', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-default)', border: '1px solid var(--wz-color-semantic-border-subtle)' },
+                  { label: 'bg.surfaceAlt', bg: 'var(--wz-color-semantic-bg-surfaceAlt)', color: 'var(--wz-color-semantic-fg-default)', border: '1px solid var(--wz-color-semantic-border-subtle)' },
+                  { label: 'border', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-default)', border: '2px solid var(--wz-color-semantic-border-default)' },
+                  { label: 'brand.primary', bg: 'var(--wz-color-semantic-brand-primary)', color: 'var(--wz-color-semantic-fg-inverse)' },
+                  { label: 'brand.primaryStrong', bg: 'var(--wz-color-semantic-brand-primaryStrong)', color: 'var(--wz-color-semantic-fg-inverse)' },
+                  { label: 'accent.blue', bg: 'var(--wz-color-semantic-accent-blueStrong)', color: 'var(--wz-color-semantic-fg-inverse)' },
+                  { label: 'highlight.lime', bg: 'var(--wz-color-semantic-accent-highlightLime)', color: 'var(--wz-color-semantic-fg-default)' },
+                ].map(({ label, bg, color, border }) => (
+                  <Box key={label} style={{ padding: '8px 12px', borderRadius: 'var(--radius-2)', background: bg, color, border }}>
+                    <Text size="1" weight="medium" style={{ color: 'inherit' }}>{label}</Text>
+                  </Box>
+                ))}
+              </Flex>
+            </Box>
+            <Box>
+              <Text size="2" weight="bold" style={{ marginBottom: 8, display: 'block', color: 'var(--wz-color-semantic-fg-muted)' }}>Typography (token-driven)</Text>
+              <Flex direction="column" gap="3">
+                <Box style={{ fontFamily: 'var(--wz-typography-hero-medium-font-family)', fontSize: 'var(--wz-typography-hero-medium-font-size)', lineHeight: 'var(--wz-typography-hero-medium-line-height)', fontWeight: 'var(--wz-typography-hero-medium-font-weight)', color: 'var(--wz-color-semantic-fg-default)' }}>Hero medium — 80px Space Mono</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-title-large-font-family)', fontSize: 'var(--wz-typography-title-large-font-size)', lineHeight: 'var(--wz-typography-title-large-line-height)', color: 'var(--wz-color-semantic-fg-default)' }}>Title large — Page titles</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-sectionTitle-mediumBold-font-family)', fontSize: 'var(--wz-typography-sectionTitle-mediumBold-font-size)', lineHeight: 'var(--wz-typography-sectionTitle-mediumBold-line-height)', fontWeight: 'var(--wz-typography-sectionTitle-mediumBold-font-weight)', color: 'var(--wz-color-semantic-fg-default)' }}>Section title medium bold — Card titles</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-text-base-font-family)', fontSize: 'var(--wz-typography-text-base-font-size)', lineHeight: 'var(--wz-typography-text-base-line-height)', color: 'var(--wz-color-semantic-fg-default)' }}>Text base — Body content. Nunito Sans 16px.</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-text-xSmall-font-family)', fontSize: 'var(--wz-typography-text-xSmall-font-size)', color: 'var(--wz-color-semantic-fg-muted)' }}>Text xSmall — Small links, disclaimer, legal</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-accent-large-font-family)', fontSize: 'var(--wz-typography-accent-large-font-size)', letterSpacing: 'var(--wz-typography-accent-large-letter-spacing)', color: 'var(--wz-color-semantic-brand-primary)' }}>Accent large — Buttons, labels, tags</Box>
+              </Flex>
+            </Box>
+          </Flex>
         </Section>
 
         {/* Aspect Ratio */}
@@ -410,19 +448,19 @@ export default function Playground() {
               <Text size="2" weight="bold" color="gray">Accent</Text>
               <Callout.Root variant="soft" size="2">
                 <Callout.Icon>
-                  <InfoCircledIcon width={18} height={18} />
+                  <Info sx={{ fontSize: 18 }} />
                 </Callout.Icon>
                 <Callout.Text>Please <span style={{ textDecoration: 'underline' }}>upgrade</span> to the new version.</Callout.Text>
               </Callout.Root>
               <Callout.Root variant="surface" size="2">
                 <Callout.Icon>
-                  <InfoCircledIcon width={18} height={18} />
+                  <Info sx={{ fontSize: 18 }} />
                 </Callout.Icon>
                 <Callout.Text>Please <span style={{ textDecoration: 'underline' }}>upgrade</span> to the new version.</Callout.Text>
               </Callout.Root>
               <Callout.Root variant="outline" size="2">
                 <Callout.Icon>
-                  <InfoCircledIcon width={18} height={18} />
+                  <Info sx={{ fontSize: 18 }} />
                 </Callout.Icon>
                 <Callout.Text>Please <span style={{ textDecoration: 'underline' }}>upgrade</span> to the new version.</Callout.Text>
               </Callout.Root>
@@ -431,19 +469,19 @@ export default function Playground() {
               <Text size="2" weight="bold" color="gray">Gray</Text>
               <Callout.Root color="gray" variant="soft" size="2">
                 <Callout.Icon>
-                  <InfoCircledIcon width={18} height={18} />
+                  <Info sx={{ fontSize: 18 }} />
                 </Callout.Icon>
                 <Callout.Text>Please <span style={{ textDecoration: 'underline' }}>upgrade</span> to the new version.</Callout.Text>
               </Callout.Root>
               <Callout.Root color="gray" variant="surface" size="2">
                 <Callout.Icon>
-                  <InfoCircledIcon width={18} height={18} />
+                  <Info sx={{ fontSize: 18 }} />
                 </Callout.Icon>
                 <Callout.Text>Please <span style={{ textDecoration: 'underline' }}>upgrade</span> to the new version.</Callout.Text>
               </Callout.Root>
               <Callout.Root color="gray" variant="outline" size="2">
                 <Callout.Icon>
-                  <InfoCircledIcon width={18} height={18} />
+                  <Info sx={{ fontSize: 18 }} />
                 </Callout.Icon>
                 <Callout.Text>Please <span style={{ textDecoration: 'underline' }}>upgrade</span> to the new version.</Callout.Text>
               </Callout.Root>
@@ -726,7 +764,7 @@ export default function Playground() {
                 <DropdownMenu.Trigger>
                   <Button variant="solid">
                     Options
-                    <ChevronDownIcon width={14} height={14} style={{ marginLeft: 6 }} />
+                    <KeyboardArrowDown sx={{ fontSize: 14 }} style={{ marginLeft: 6 }} />
                   </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content>
@@ -740,7 +778,7 @@ export default function Playground() {
                 <DropdownMenu.Trigger>
                   <Button variant="solid" color="gray">
                     Options
-                    <ChevronDownIcon width={14} height={14} style={{ marginLeft: 6 }} />
+                    <KeyboardArrowDown sx={{ fontSize: 14 }} style={{ marginLeft: 6 }} />
                   </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content>
@@ -758,7 +796,7 @@ export default function Playground() {
                 <DropdownMenu.Trigger>
                   <Button variant="soft">
                     Options
-                    <ChevronDownIcon width={14} height={14} style={{ marginLeft: 6 }} />
+                    <KeyboardArrowDown sx={{ fontSize: 14 }} style={{ marginLeft: 6 }} />
                   </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content>
@@ -772,7 +810,7 @@ export default function Playground() {
                 <DropdownMenu.Trigger>
                   <Button variant="soft" color="gray">
                     Options
-                    <ChevronDownIcon width={14} height={14} style={{ marginLeft: 6 }} />
+                    <KeyboardArrowDown sx={{ fontSize: 14 }} style={{ marginLeft: 6 }} />
                   </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content>
@@ -992,6 +1030,12 @@ export default function Playground() {
 
             <Tabs.Content value="dashboard">
               <DashboardExample />
+            </Tabs.Content>
+
+            <Tabs.Content value="emea-org-chart">
+              <Box pt="5">
+                <Text size="2" color="gray">EMEA Org Chart content.</Text>
+              </Box>
             </Tabs.Content>
 
             <Tabs.Content value="playground">

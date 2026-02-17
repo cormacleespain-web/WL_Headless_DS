@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useTheme } from '../theme/ThemeContext.jsx';
-import { Cross2Icon } from '@radix-ui/react-icons';
+import Close from '@mui/icons-material/Close';
 
 // Import the styles for the drawer. These classes define the overlay and slide
 // behaviour for the panel.
@@ -98,7 +98,7 @@ const ThemeDrawer = () => {
                 cursor: 'pointer',
               }}
             >
-              <Cross2Icon />
+              <Close sx={{ fontSize: 20 }} />
             </button>
           </Dialog.Close>
         </div>
