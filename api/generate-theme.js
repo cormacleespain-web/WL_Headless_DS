@@ -2,22 +2,27 @@
  * Vercel serverless function: proxy OpenAI for theme generation.
  * Keeps the API key server-side and avoids CORS. Set OPENAI_API_KEY in Vercel env.
  */
+function sendJson(res, status, data) {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(status).end(JSON.stringify(data));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
+    sendJson(res, 405, { error: 'Method not allowed' });
     return;
   }
 
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
-    res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
+    sendJson(res, 500, { error: 'OPENAI_API_KEY not configured' });
     return;
   }
 
   const body = req.body || {};
   const { prompt, systemPrompt, model = 'gpt-4o-mini' } = body;
   if (!prompt || !systemPrompt) {
-    res.status(400).json({ error: 'Missing prompt or systemPrompt' });
+    sendJson(res, 400, { error: 'Missing prompt or systemPrompt' });
     return;
   }
 
@@ -41,13 +46,13 @@ export default async function handler(req, res) {
     const data = await response.json();
     if (!response.ok) {
       const err = data?.error?.message || `OpenAI ${response.status}`;
-      res.status(response.status).json({ error: err });
+      sendJson(res, response.status, { error: err });
       return;
     }
 
     const content = data.choices?.[0]?.message?.content ?? '';
-    res.status(200).json({ content });
+    sendJson(res, 200, { content });
   } catch (e) {
-    res.status(500).json({ error: e?.message || 'OpenAI request failed' });
+    sendJson(res, 500, { error: e?.message || 'OpenAI request failed' });
   }
 }
