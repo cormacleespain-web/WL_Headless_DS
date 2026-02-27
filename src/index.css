@@ -125,16 +125,32 @@ button {
   box-shadow: none !important;
   border-radius: 12px;
 }
+.theme-panel-ai-textarea {
+  overflow: visible;
+  min-height: 0;
+}
 .theme-panel-ai-textarea textarea {
-  min-height: 40px;
+  min-height: 56px;
+  max-height: 200px;
   padding: 8px 0 !important;
-  overflow-y: auto;
+  overflow-y: auto !important;
   font-size: 0.9375rem;
   line-height: 1.5;
+  display: block;
 }
 .theme-panel-ai-textarea:focus-within {
   outline: none;
   box-shadow: none;
+}
+.theme-panel-ai-chat-entry {
+  flex-shrink: 0;
+  min-height: 0;
+}
+.theme-panel-ai-chat-entry .theme-panel-ai-textarea {
+  flex-shrink: 0;
+}
+.theme-panel-ai-chat-entry .theme-panel-ai-textarea textarea {
+  resize: none;
 }
 
 /* Cursor-style chat entry: prominent circular Send, subtle bottom bar */

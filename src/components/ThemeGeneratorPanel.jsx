@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useTheme, ALLOWED_GOOGLE_FONTS, FONT_WEIGHT_OPTIONS, FONT_STYLE_OPTIONS } from '../theme/ThemeContext.jsx';
 import exampleThemeTokens from '../theme/tokens/wizeline-light.json';
 import {
@@ -32,6 +33,7 @@ import AttachFile from '@mui/icons-material/AttachFile';
 import Send from '@mui/icons-material/Send';
 import Mic from '@mui/icons-material/Mic';
 import Save from '@mui/icons-material/Save';
+import Check from '@mui/icons-material/Check';
 
 // Alias for document/file icon (some code may reference FileTextIcon)
 const FileTextIcon = Description;
@@ -56,6 +58,7 @@ const GOOGLE_FONTS = ALLOWED_GOOGLE_FONTS;
 const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
 const OPENAI_MODEL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_OPENAI_MODEL) || 'gpt-4o-mini';
 const OPENAI_PROXY_URL = '/api/generate-theme';
+const TRANSCRIBE_API_URL = '/api/transcribe';
 
 // Ollama: In dev we use the Vite proxy (/api/ollama -> localhost:11434). Set VITE_OLLAMA_URL to override.
 const OLLAMA_URL =
@@ -163,48 +166,55 @@ function extractThemeJson(text) {
 }
 
 function getThemeGeneratorSystemPrompt() {
-  return `You are a theme generator. Reply with ONLY a JSON object in Wizeline design-token format. No other text.
+  const accentList = ACCENT_OPTIONS.join(', ');
+  const radiusList = RADIUS_OPTIONS.join(', ');
+  return `You are a friendly theme assistant. Users describe what they want in plain language (e.g. "give me a yellow theme with square corners", "dark blue and rounded", "something warm and soft"). Interpret their intent and reply with ONLY a valid JSON object—no other text, no markdown.
 
-Required structure (use exact keys; values can be hex colors or references like "{wizeline.tokens.color.palette.contrast.black}"):
+OPTION A — Simple config (preferred when the request is about colors, light/dark, corners, font): output a flat object with these exact keys:
 {
-  "wizeline": {
-    "tokens": {
-      "color": {
-        "palette": {
-          "red": { "darkest": "#hex", "dark": "#hex", "base": "#hex", "light": "#hex", "lighter": "#hex", "lighter2": "#hex", "lightest": "#hex" },
-          "neutral": { "darkest": "#hex", "darker2": "#hex", "darker": "#hex", "base": "#hex", "lighter": "#hex", "lightest": "#hex" },
-          "contrast": { "black": "#hex", "white": "#hex" },
-          "blues": { "darker": "#hex", "lighter": "#hex" },
-          "highlight": { "lime": "#hex", "mint": "#hex", "lilac": "#hex" }
-        },
-        "semantic": {
-          "fg": { "default": "{wizeline.tokens.color.palette.contrast.black}", "muted": "{wizeline.tokens.color.palette.neutral.darkest}", "inverse": "{wizeline.tokens.color.palette.contrast.white}" },
-          "bg": { "canvas": "{wizeline.tokens.color.palette.contrast.white}", "surface": "{wizeline.tokens.color.palette.neutral.base}", "surfaceAlt": "{wizeline.tokens.color.palette.neutral.lighter}", "subtle": "{wizeline.tokens.color.palette.neutral.lightest}" },
-          "border": { "subtle": "{wizeline.tokens.color.palette.neutral.darker}", "default": "{wizeline.tokens.color.palette.neutral.darker2}", "strong": "{wizeline.tokens.color.palette.neutral.darkest}" },
-          "brand": { "primary": "{wizeline.tokens.color.palette.red.base}", "primaryStrong": "{wizeline.tokens.color.palette.red.dark}", "primarySoft": "{wizeline.tokens.color.palette.red.lightest}" }
-        }
-      },
-      "fontFamily": { "spaceMono": "Space Mono", "nunitoSans": "Nunito Sans" }
-    }
-  }
+  "appearance": "light" or "dark",
+  "accentColor": "one of: ${accentList}",
+  "grayColor": "auto" or "gray" or "mauve" or "slate" or "sage" or "olive" or "sand",
+  "radius": "one of: ${radiusList}",
+  "scaling": "90%" | "95%" | "100%" | "105%" | "110%",
+  "panelBackground": "solid" or "translucent",
+  "fontFamily": "optional Google font name or omit",
+  "fontWeight": 300 | 400 | 500 | 600 | 700,
+  "fontStyle": "normal" or "italic"
 }
+
+Natural language mapping:
+- "yellow / gold / amber / orange / blue / green / red / purple / pink" etc. → accentColor (use closest: yellow→yellow, gold→gold, amber→amber, blue→blue, navy→indigo).
+- "square / sharp / no rounding / flat corners" → radius: "none". "rounded / pill / large corners" → radius: "large" or "full". "slightly rounded" → "medium".
+- "dark / night / black theme" → appearance: "dark". "light / bright / white" → appearance: "light".
+- "bold / heavy" → fontWeight: 700. "light / thin" → 300. "italic" → fontStyle: "italic".
+- If the user attaches an image, describe the mood and dominant colors you see and map them to the config (e.g. warm image → warm accent like amber/orange; corporate blue image → blue/indigo accent, etc.).
+
+OPTION B — Full Wizeline token JSON: only if the user explicitly asks for custom hex colors or a full design token set. Use the same structure as before with "wizeline.tokens.color.palette" etc., and use exact keys.
 
 Rules:
-- For "light" themes use contrast.black as text, contrast.white as canvas. For "dark" themes swap them (canvas dark, text light).
-- Pick a cohesive palette: red/base for brand, neutrals for UI, blues for links. Use hex colors like #211E1E, #FFFFFF, #E93D44.
-- You may omit "cool" in palette or typography; they will be filled from defaults.
-- Return valid JSON only.`;
+- Prefer OPTION A (flat config) for normal requests like "yellow theme with square corners".
+- For images: infer appearance (light/dark), accent color from dominant colors, and radius from the style (sharp UI → none, soft UI → large).
+- Always return valid JSON only. No explanation outside the JSON.`;
 }
 
-/** Call same-origin proxy to OpenAI (avoids CORS; key stays server-side). Returns { config } or { error: string }. */
-async function fetchThemeViaOpenAIProxy(promptText) {
-  if (!promptText || promptText === '(Image or file)') return { error: 'disabled' };
+/** Call same-origin proxy to OpenAI (avoids CORS; key stays server-side). Supports text and optional image (base64). Returns { config } or { tokenSet } or { error: string }. */
+async function fetchThemeViaOpenAIProxy(promptText, imageBase64, imageMimeType) {
+  const hasImage = imageBase64 && typeof imageBase64 === 'string';
+  const hasText = promptText && promptText.trim() && promptText !== '(Image or file)';
+  if (!hasText && !hasImage) return { error: 'disabled' };
   const systemPrompt = getThemeGeneratorSystemPrompt();
+  const prompt = (hasText ? promptText.trim() : '') || (hasImage ? 'Create a theme inspired by this image.' : '');
   try {
+    const body = { prompt, systemPrompt, model: OPENAI_MODEL };
+    if (hasImage) {
+      body.imageBase64 = imageBase64;
+      body.imageMimeType = imageMimeType || 'image/jpeg';
+    }
     const res = await fetch(OPENAI_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: promptText, systemPrompt, model: OPENAI_MODEL }),
+      body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -324,9 +334,25 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
   const [aiRefineExpanded, setAiRefineExpanded] = useState(false);
   const [aiFileDropOver, setAiFileDropOver] = useState(false);
   const [aiVoiceListening, setAiVoiceListening] = useState(false);
+  const [voiceElapsedSeconds, setVoiceElapsedSeconds] = useState(0);
+  const [voiceLevels, setVoiceLevels] = useState(() => Array(12).fill(0));
+  const [voiceHasReceivedResult, setVoiceHasReceivedResult] = useState(false);
+  const [voiceTranscribing, setVoiceTranscribing] = useState(false);
+  const [aiAttachment, setAiAttachment] = useState(null); // { file: File, preview: string | null, name: string }
   const aiFileInputRef = React.useRef(null);
   const speechRecognitionRef = React.useRef(null);
   const aiPromptTextareaRef = React.useRef(null);
+  const mediaStreamRef = React.useRef(null);
+  const mediaRecorderRef = React.useRef(null);
+  const recordedChunksRef = React.useRef([]);
+  const voiceDoneClickedRef = React.useRef(false);
+  const audioContextRef = React.useRef(null);
+  const analyserRef = React.useRef(null);
+  const voiceLevelAnimationRef = React.useRef(null);
+  const voiceTimerRef = React.useRef(null);
+  const transcriptAccumulatorRef = React.useRef('');
+  const promptAtRecordingStartRef = React.useRef('');
+  const isStoppingVoiceRef = React.useRef(false);
 
   const pushHistory = useCallback(() => {
     setHistoryState(({ history: h, index: i }) => {
@@ -576,18 +602,97 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
     };
   }, [config.grayColor, config.panelBackground]);
 
+  const clearAiAttachment = useCallback(() => {
+    setAiAttachment((prev) => {
+      if (prev?.preview) URL.revokeObjectURL(prev.preview);
+      return null;
+    });
+  }, []);
+
+  const handleAiFileSelect = useCallback((e) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const isImage = file.type.startsWith('image/');
+    const isJson = file.name.toLowerCase().endsWith('.json') || file.type === 'application/json';
+    if (!isImage && !isJson) {
+      window.alert('Please attach an image (for theme inspiration) or a JSON theme file.');
+      return;
+    }
+    setAiAttachment((prev) => {
+      if (prev?.preview) URL.revokeObjectURL(prev.preview);
+      const preview = isImage ? URL.createObjectURL(file) : null;
+      return { file, preview, name: file.name };
+    });
+  }, []);
+
   const handleAiSend = useCallback(async (overridePrompt) => {
-    const text = (overridePrompt ?? (aiPrompt || '')).trim() || '(Image or file)';
-    setAiMessages((m) => [...m, { role: 'user', content: text }]);
+    const attachment = aiAttachment;
+    const rawText = (overridePrompt ?? aiPrompt ?? '').trim();
+    const isImage = attachment?.file?.type?.startsWith('image/');
+    const isJson = attachment?.file?.name?.toLowerCase().endsWith('.json') || attachment?.file?.type === 'application/json';
+    let userMessageText = rawText;
+    if (!rawText && attachment) {
+      userMessageText = isImage ? 'Create a theme from this image.' : isJson ? 'Use this theme JSON as a base and suggest improvements or variations.' : 'Create a theme from this.';
+    } else if (!rawText && !attachment) {
+      setAiLoading(false);
+      return;
+    }
+    setAiMessages((m) => [...m, { role: 'user', content: userMessageText + (attachment ? ` [Attached: ${attachment.name}]` : '') }]);
     if (!overridePrompt) setAiPrompt('');
     setAiLoading(true);
-    const hasNewPrompt = text !== '(Image or file)' && text.length > 0;
+
+    let promptForApi = userMessageText;
+    let imageBase64 = null;
+    let imageMimeType = null;
+
+    if (attachment?.file) {
+      if (isImage) {
+        try {
+          imageBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result;
+              const base64 = dataUrl?.split(',')[1];
+              resolve(base64 || null);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(attachment.file);
+          });
+          imageMimeType = attachment.file.type || 'image/jpeg';
+        } catch (e) {
+          console.error('[AI theme] Failed to read image', e);
+          setAiMessages((m) => [...m, { role: 'assistant', content: 'Could not read the attached image. Try again.' }]);
+          setAiLoading(false);
+          return;
+        }
+      } else if (isJson) {
+        try {
+          const jsonText = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsText(attachment.file);
+          });
+          promptForApi = `${userMessageText}\n\nAttached theme JSON:\n${jsonText}`;
+        } catch (e) {
+          console.error('[AI theme] Failed to read JSON file', e);
+          setAiMessages((m) => [...m, { role: 'assistant', content: 'Could not read the attached file.' }]);
+          setAiLoading(false);
+          return;
+        }
+      }
+      clearAiAttachment();
+    }
+
     let nextConfig = null;
     let nextTokenSet = null;
     let source = 'refine';
     let ollamaError = null;
+    const hasNewPrompt = promptForApi.length > 0 || imageBase64;
+
     if (hasNewPrompt) {
-      const openaiResult = await fetchThemeViaOpenAIProxy(text);
+      const openaiResult = await fetchThemeViaOpenAIProxy(promptForApi, imageBase64, imageMimeType);
       if (openaiResult.tokenSet) {
         nextTokenSet = openaiResult.tokenSet;
         source = 'openai';
@@ -597,8 +702,8 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
       } else if (openaiResult.error && openaiResult.error !== 'disabled') {
         ollamaError = openaiResult.error;
       }
-      if (!nextTokenSet && !nextConfig && USE_OLLAMA) {
-        const result = await fetchThemeFromOllama(text);
+      if (!nextTokenSet && !nextConfig && USE_OLLAMA && !imageBase64) {
+        const result = await fetchThemeFromOllama(promptForApi);
         if (result.tokenSet) {
           nextTokenSet = result.tokenSet;
           source = 'ollama';
@@ -610,7 +715,7 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
         }
       }
       if (!nextTokenSet && !nextConfig) {
-        nextConfig = generateThemeFromPrompt(text);
+        nextConfig = generateThemeFromPrompt(promptForApi);
         source = 'fallback';
       }
     }
@@ -651,7 +756,7 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
     setAiMessages((m) => [...m, { role: 'assistant', content: assistantContent }]);
     setAiRefineExpanded(false);
     setAiLoading(false);
-  }, [aiPrompt, aiRefineConfig, generateThemeFromPrompt, setTheme]);
+  }, [aiPrompt, aiAttachment, aiRefineConfig, clearAiAttachment, generateThemeFromPrompt, setTheme]);
 
   const handleAiReset = useCallback(() => {
     setAiMessages([]);
@@ -659,54 +764,257 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
     setAiRefineConfig(null);
     setAiGeneratedConfig(null);
     setAiRefineExpanded(false);
-  }, []);
+    clearAiAttachment();
+  }, [clearAiAttachment]);
 
   const handleAiRefineUpdate = useCallback((partial) => {
     setAiRefineConfig((prev) => (prev ? { ...prev, ...partial } : null));
   }, []);
 
-  const handleAiVoiceClick = useCallback(() => {
-    const SpeechRecognitionAPI = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
-    if (!SpeechRecognitionAPI) {
-      window.alert('Voice input is not supported in this browser. Try Chrome or Edge.');
-      return;
+  const SILENCE_THRESHOLD = 0.015;
+  const NUM_VOICE_BARS = 12;
+
+  const setAiPromptAndSyncToTextarea = useCallback((text, options = {}) => {
+    const s = String(text ?? '');
+    flushSync(() => setAiPrompt(s));
+    const textarea = aiPromptTextareaRef.current;
+    if (textarea && textarea.value !== s) textarea.value = s;
+    if (options.scrollIntoView && textarea) textarea.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, []);
+
+  const doVoiceCleanup = useCallback(() => {
+    if (isStoppingVoiceRef.current) return;
+    isStoppingVoiceRef.current = true;
+    if (voiceTimerRef.current) {
+      clearInterval(voiceTimerRef.current);
+      voiceTimerRef.current = null;
     }
-    if (aiVoiceListening) {
-      if (speechRecognitionRef.current) {
+    if (voiceLevelAnimationRef.current != null) {
+      cancelAnimationFrame(voiceLevelAnimationRef.current);
+      voiceLevelAnimationRef.current = null;
+    }
+    if (speechRecognitionRef.current) {
+      try {
         speechRecognitionRef.current.stop();
-      }
-      setAiVoiceListening(false);
+      } catch (_) {}
+      speechRecognitionRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (_) {}
+    }
+    mediaRecorderRef.current = null;
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    setAiVoiceListening(false);
+    setVoiceElapsedSeconds(0);
+    setVoiceLevels(Array(NUM_VOICE_BARS).fill(0));
+    setVoiceHasReceivedResult(false);
+    transcriptAccumulatorRef.current = '';
+    voiceDoneClickedRef.current = false;
+    isStoppingVoiceRef.current = false;
+  }, []);
+
+  const stopVoiceRecording = useCallback((commitTranscript) => {
+    const transcript = transcriptAccumulatorRef.current.trim();
+    const base = promptAtRecordingStartRef.current ?? '';
+    doVoiceCleanup();
+    if (commitTranscript) {
+      const text = transcript ? (base ? `${base} ${transcript}` : transcript) : base;
+      setAiPromptAndSyncToTextarea(text, { scrollIntoView: true });
+    } else {
+      setAiPromptAndSyncToTextarea(base);
+    }
+  }, [doVoiceCleanup, setAiPromptAndSyncToTextarea]);
+
+  // Voice: optional live transcription via Web Speech API (Chrome/Edge). Fallback: record and send to
+  // /api/transcribe (OpenAI Whisper) when user clicks Done — works in all browsers.
+  const handleAiVoiceClick = useCallback(async () => {
+    const SpeechRecognitionAPI = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (aiVoiceListening) {
+      stopVoiceRecording(false);
       return;
     }
+    transcriptAccumulatorRef.current = '';
+    promptAtRecordingStartRef.current = aiPrompt;
+    voiceDoneClickedRef.current = false;
+    recordedChunksRef.current = [];
+    setVoiceElapsedSeconds(0);
+    setVoiceLevels(Array(NUM_VOICE_BARS).fill(0));
+    setVoiceHasReceivedResult(false);
     try {
-      if (!speechRecognitionRef.current) {
-        const recognition = new SpeechRecognitionAPI();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        recognition.onresult = (event) => {
-          let segment = '';
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const AudioContextAPI = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContextAPI();
+      audioContextRef.current = ctx;
+      if (ctx.state === 'suspended') await ctx.resume();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.6;
+      analyserRef.current = analyser;
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const handleRecordingStop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+        const transcript = transcriptAccumulatorRef.current.trim();
+        const base = promptAtRecordingStartRef.current ?? '';
+        if (voiceDoneClickedRef.current) {
+          if (transcript) {
+            setAiPromptAndSyncToTextarea(base ? `${base} ${transcript}` : transcript, { scrollIntoView: true });
+          } else if (blob.size > 0) {
+            setVoiceTranscribing(true);
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = (reader.result || '').split(',')[1];
+              if (!base64) {
+                setVoiceTranscribing(false);
+                doVoiceCleanup();
+                return;
+              }
+              fetch(TRANSCRIBE_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audioBase64: base64, mimeType: 'audio/webm' }),
+              })
+                .then((r) => r.json())
+                .then((data) => {
+                  const text = data?.text?.trim();
+                  if (text) setAiPromptAndSyncToTextarea(base ? `${base} ${text}` : text, { scrollIntoView: true });
+                })
+                .catch(() => {})
+                .finally(() => {
+                  setVoiceTranscribing(false);
+                  doVoiceCleanup();
+                });
+            };
+            reader.readAsDataURL(blob);
+            return;
+          } else {
+            setAiPromptAndSyncToTextarea(base);
+          }
+        }
+        doVoiceCleanup();
+      };
+
+      if (typeof MediaRecorder !== 'undefined') {
+        const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+        recorder.ondataavailable = (e) => {
+          if (e.data.size) recordedChunksRef.current.push(e.data);
+        };
+        recorder.onstop = handleRecordingStop;
+        recorder.start(1000);
+      }
+
+      if (SpeechRecognitionAPI) {
+      const createRecognition = () => {
+        const rec = new SpeechRecognitionAPI();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.maxAlternatives = 1;
+        rec.lang = 'en-US';
+        rec.onresult = (event) => {
+          if (!event.results || !event.results.length) return;
+          let finalSegment = '';
+          let interimSegment = '';
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const result = event.results[i];
-            if (result.isFinal) segment += result[0].transcript;
+            let text = '';
+            const len = result.length != null ? result.length : (result.item ? 1 : 1);
+            for (let a = 0; a < len; a++) {
+              const alt = result[a] ?? (typeof result.item === 'function' ? result.item(a) : null);
+              const t = (alt && (typeof alt.transcript === 'string' ? alt.transcript : alt.transcript != null ? String(alt.transcript) : ''));
+              if (t.trim()) {
+                text = t.trim();
+                break;
+              }
+            }
+            if (result.isFinal) {
+              finalSegment += (finalSegment ? ' ' : '') + text;
+            } else {
+              interimSegment += (interimSegment ? ' ' : '') + text;
+            }
           }
-          if (segment.trim()) {
-            setAiPrompt((prev) => (prev ? `${prev} ${segment.trim()}` : segment.trim()));
+          if (finalSegment) {
+            transcriptAccumulatorRef.current += (transcriptAccumulatorRef.current ? ' ' : '') + finalSegment;
           }
+          const base = promptAtRecordingStartRef.current ?? '';
+          const finalSoFar = transcriptAccumulatorRef.current.trim();
+          const interim = interimSegment.trim();
+          const combined = [finalSoFar, interim].filter(Boolean).join(' ');
+          const display = base ? (combined ? `${base} ${combined}` : base) : combined;
+          setVoiceHasReceivedResult(true);
+          setAiPromptAndSyncToTextarea(display);
         };
-        recognition.onend = () => setAiVoiceListening(false);
-        recognition.onerror = (event) => {
-          if (event.error !== 'aborted') setAiVoiceListening(false);
+        rec.onend = () => {
+          if (isStoppingVoiceRef.current) return;
+          if (!mediaStreamRef.current) return;
+          setTimeout(() => {
+            if (isStoppingVoiceRef.current || !mediaStreamRef.current) return;
+            try {
+              const next = createRecognition();
+              speechRecognitionRef.current = next;
+              next.start();
+            } catch (err) {
+              stopVoiceRecording(false);
+            }
+          }, 200);
         };
-        speechRecognitionRef.current = recognition;
+        rec.onerror = (event) => {
+          if (event.error === 'aborted') return;
+          if (event.error === 'no-speech') return;
+          if (event.error === 'network') return;
+          const msg = event.error === 'not-allowed' ? 'Microphone access denied. Allow mic for this site and try again.' : event.error === 'audio-capture' ? 'No microphone found.' : `Speech recognition stopped (${event.error}). Try Chrome or Edge.`;
+          window.alert(msg);
+          stopVoiceRecording(false);
+        };
+        return rec;
+      };
+      const recognition = createRecognition();
+      speechRecognitionRef.current = recognition;
+      recognition.start();
       }
-      speechRecognitionRef.current.start();
+
       setAiVoiceListening(true);
+
+      let startTime = Date.now();
+      voiceTimerRef.current = setInterval(() => {
+        setVoiceElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+
+      const updateLevels = () => {
+        if (!analyserRef.current || !mediaStreamRef.current) return;
+        const analyserNode = analyserRef.current;
+        analyserNode.getByteFrequencyData(dataArray);
+        const step = Math.floor(dataArray.length / NUM_VOICE_BARS);
+        const next = [];
+        for (let i = 0; i < NUM_VOICE_BARS; i++) {
+          let v = 0;
+          for (let j = 0; j < step; j++) v += dataArray[i * step + j] || 0;
+          v = (v / step) / 255;
+          next.push(v);
+        }
+        setVoiceLevels(next);
+        voiceLevelAnimationRef.current = requestAnimationFrame(updateLevels);
+      };
+      voiceLevelAnimationRef.current = requestAnimationFrame(updateLevels);
     } catch (err) {
       setAiVoiceListening(false);
       window.alert('Could not start voice input. Check microphone permission.');
     }
-  }, [aiVoiceListening]);
+  }, [aiVoiceListening, doVoiceCleanup, setAiPromptAndSyncToTextarea, stopVoiceRecording]);
 
   useEffect(() => {
     if (aiMode && aiRefineConfig) setThemeConfig(aiRefineConfig);
@@ -714,12 +1022,10 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
 
   // Auto-resize AI prompt textarea as content wraps
   useEffect(() => {
-    const el = aiPromptTextareaRef.current;
-    if (!el) return;
-    const textarea = el.querySelector?.('textarea') ?? el;
+    const textarea = aiPromptTextareaRef.current;
     if (textarea && textarea.scrollHeight > 0) {
       textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+      textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 56), 200)}px`;
     }
   }, [aiPrompt]);
 
@@ -937,7 +1243,7 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
         {/* AI Mode: intro at top (no extra space above), then chat, prompt at bottom */}
         <Flex direction="column" gap="3" style={{ flex: 1, minHeight: 0 }} className="theme-panel-ai-content">
           <Text size="2" color="gray" style={{ flexShrink: 0, marginTop: 0, marginBottom: 4 }}>
-            Describe your theme (e.g. &quot;dark blue, rounded&quot;) or attach an image or file. I&apos;ll suggest Colors, Typography and Other tokens.
+            Describe your theme in plain language (e.g. &quot;yellow theme with square corners&quot;), attach an image or JSON file, or use voice. I&apos;ll suggest colors, typography and shape to match.
           </Text>
           <ScrollArea style={{ flex: 1, minHeight: 120 }} className="theme-panel-scroll">
             <Flex direction="column" gap="2" style={{ paddingRight: 8 }}>
@@ -1086,12 +1392,110 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
             </Box>
           )}
 
+          {/* Voice recording overlay: waveform, timer, Cancel/Done (inspired by reference) */}
+          {(aiVoiceListening || voiceTranscribing) && (
+            <Box
+              className="theme-panel-voice-overlay"
+              style={{
+                padding: '14px 16px',
+                borderRadius: 16,
+                background: 'var(--gray-a4)',
+                border: '1px solid var(--gray-a6)',
+                flexShrink: 0,
+              }}
+            >
+              <Flex direction="column" gap="3">
+                {voiceTranscribing ? (
+                  <>
+                    <Flex align="center" gap="2" style={{ flexShrink: 0 }}>
+                      <Mic sx={{ fontSize: 20, color: 'var(--gray-12)' }} />
+                      <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>Transcribing your recording…</Text>
+                    </Flex>
+                    <Text size="1" style={{ color: 'var(--gray-11)' }}>Sending to server. Text will appear in the box below.</Text>
+                  </>
+                ) : (
+                  <>
+                <Flex align="center" gap="2" style={{ flexShrink: 0 }}>
+                  <Mic sx={{ fontSize: 20, color: 'var(--gray-12)' }} />
+                  <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>Recording an audio clip…</Text>
+                </Flex>
+                <Text size="1" style={{ color: 'var(--gray-11)', marginTop: -4 }}>
+                  {voiceHasReceivedResult
+                    ? '✓ Speech received — words appear in the box below.'
+                    : 'Speak clearly. Words may appear live (Chrome/Edge) or when you click Done we transcribe the recording.'}
+                </Text>
+                <Flex align="center" gap="2" style={{ alignItems: 'center', minHeight: 32 }}>
+                  <Flex align="end" gap="1" style={{ flex: 1, height: 24, alignItems: 'flex-end', justifyContent: 'center' }}>
+                    {voiceLevels.map((level, i) => (
+                      <Box
+                        key={i}
+                        style={{
+                          width: 4,
+                          height: Math.max(4, 4 + level * 20),
+                          borderRadius: 2,
+                          background: level > SILENCE_THRESHOLD ? 'var(--accent-9)' : 'var(--gray-8)',
+                          transition: 'height 0.05s ease-out',
+                        }}
+                      />
+                    ))}
+                  </Flex>
+                  <Text size="2" style={{ color: 'var(--gray-11)', fontVariantNumeric: 'tabular-nums', minWidth: 32 }}>
+                    {Math.floor(voiceElapsedSeconds / 60)}:{(voiceElapsedSeconds % 60).toString().padStart(2, '0')}
+                  </Text>
+                </Flex>
+                <Flex justify="between" align="center" gap="2">
+                  <Tooltip content="Cancel">
+                    <IconButton size="2" variant="soft" color="gray" aria-label="Cancel recording" onClick={() => stopVoiceRecording(false)} style={{ borderRadius: '50%' }} disabled={voiceTranscribing}>
+                      <Close sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip content="Done — transcribe into message">
+                    <IconButton
+                      size="2"
+                      variant="solid"
+                      aria-label="Done recording"
+                      onClick={() => {
+                        if (mediaRecorderRef.current?.state === 'recording') {
+                          voiceDoneClickedRef.current = true;
+                          mediaRecorderRef.current.stop();
+                        } else {
+                          stopVoiceRecording(!!transcriptAccumulatorRef.current.trim());
+                        }
+                      }}
+                      className="theme-panel-ai-send-button"
+                      style={{ borderRadius: '50%' }}
+                      disabled={voiceTranscribing}
+                    >
+                      <Check sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Flex>
+                  </>
+                )}
+              </Flex>
+            </Box>
+          )}
+
           {/* Prompt send bar: Cursor-style — textarea full width, bottom bar with 3 subtle icons left + prominent Send right */}
           <Flex direction="column" gap="1" style={{ flexShrink: 0 }}>
             <Box
               onDragOver={(e) => { e.preventDefault(); setAiFileDropOver(true); }}
               onDragLeave={() => setAiFileDropOver(false)}
-              onDrop={(e) => { e.preventDefault(); setAiFileDropOver(false); const f = e.dataTransfer?.files?.[0]; if (f) handleAiSend(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setAiFileDropOver(false);
+                const f = e.dataTransfer?.files?.[0];
+                if (f) {
+                  const isImage = f.type.startsWith('image/');
+                  const isJson = f.name.toLowerCase().endsWith('.json') || f.type === 'application/json';
+                  if (isImage || isJson) {
+                    setAiAttachment((prev) => {
+                      if (prev?.preview) URL.revokeObjectURL(prev.preview);
+                      return { file: f, preview: isImage ? URL.createObjectURL(f) : null, name: f.name };
+                    });
+                  }
+                }
+              }}
               style={{
                 border: aiFileDropOver ? '2px solid var(--accent-8)' : 'none',
                 borderRadius: 16,
@@ -1101,17 +1505,37 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
               className="theme-panel-ai-chat-entry"
             >
               <Flex direction="column" gap="2">
-                <Box ref={aiPromptTextareaRef} style={{ minWidth: 0 }}>
+                {aiAttachment && (
+                  <Flex align="center" gap="2" style={{ padding: '8px 10px', background: 'var(--gray-a3)', borderRadius: 10, border: '1px solid var(--gray-a5)' }}>
+                    {aiAttachment.preview ? (
+                      <Box style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: 'var(--gray-a5)' }}>
+                        <img src={aiAttachment.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </Box>
+                    ) : (
+                      <Box style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--gray-a5)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title={aiAttachment.name}>
+                        <Description sx={{ fontSize: 20, color: 'var(--gray-11)' }} aria-hidden />
+                      </Box>
+                    )}
+                    <Text size="2" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{aiAttachment.name}</Text>
+                    <Tooltip content="Remove attachment">
+                      <IconButton size="1" variant="ghost" color="gray" aria-label="Remove attachment" onClick={clearAiAttachment} style={{ flexShrink: 0 }}>
+                        <Close sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Flex>
+                )}
+                <Box style={{ minWidth: 0, flexShrink: 0 }}>
                   <TextArea
-                    placeholder="Ask anything."
+                    ref={aiPromptTextareaRef}
+                    placeholder="Describe your theme, or attach an image or JSON file…"
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !aiLoading) { e.preventDefault(); handleAiSend(); } }}
-                    rows={1}
+                    rows={2}
                     style={{
                       width: '100%',
                       minWidth: 0,
-                      minHeight: 40,
+                      minHeight: 56,
                       resize: 'none',
                     }}
                     className="theme-panel-ai-textarea"
@@ -1158,7 +1582,7 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
                   </Flex>
                 </Flex>
               </Flex>
-              <input ref={aiFileInputRef} type="file" accept="image/*,.json" style={{ display: 'none' }} onChange={() => handleAiSend('(File attached)')} />
+              <input ref={aiFileInputRef} type="file" accept="image/*,.json,application/json" style={{ display: 'none' }} onChange={handleAiFileSelect} />
             </Box>
           </Flex>
         </Flex>
@@ -1406,12 +1830,15 @@ export default function ThemeGeneratorPanel({ onClose, open }) {
             <Redo sx={{ fontSize: 16 }} />
           </IconButton>
         </Tooltip>
-        <Tooltip content="Reset to default theme">
+        <Tooltip content="Reset to default theme and clear chat">
           <IconButton
             variant="soft"
             size="2"
             className="theme-panel-bubble"
-            onClick={handleReset}
+            onClick={() => {
+              handleAiReset();
+              handleReset();
+            }}
             aria-label="Reset theme"
           >
             <RestartAlt sx={{ fontSize: 16 }} />

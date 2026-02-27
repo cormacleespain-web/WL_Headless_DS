@@ -20,11 +20,24 @@ export default async function handler(req, res) {
   }
 
   const body = req.body || {};
-  const { prompt, systemPrompt, model = 'gpt-4o-mini' } = body;
-  if (!prompt || !systemPrompt) {
-    sendJson(res, 400, { error: 'Missing prompt or systemPrompt' });
+  const { prompt, systemPrompt, model = 'gpt-4o-mini', imageBase64, imageMimeType } = body;
+  if (!systemPrompt) {
+    sendJson(res, 400, { error: 'Missing systemPrompt' });
     return;
   }
+  const hasImage = imageBase64 && typeof imageBase64 === 'string';
+  const userText = (typeof prompt === 'string' ? prompt : '') || (hasImage ? 'Create a theme inspired by this image.' : '');
+  if (!userText && !hasImage) {
+    sendJson(res, 400, { error: 'Missing prompt or image' });
+    return;
+  }
+
+  const userContent = hasImage
+    ? [
+        { type: 'text', text: userText },
+        { type: 'image_url', image_url: { url: `data:${imageMimeType || 'image/jpeg'};base64,${imageBase64}` } },
+      ]
+    : userText;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -34,10 +47,10 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify({
-        model,
+        model: hasImage ? (model.includes('vision') ? model : 'gpt-4o-mini') : model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
+          { role: 'user', content: userContent },
         ],
         temperature: 0.3,
       }),

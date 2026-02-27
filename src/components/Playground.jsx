@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext.jsx';
 import ThemeGeneratorPanel from './ThemeGeneratorPanel.jsx';
+import EMEAOrgChart from './EMEAOrgChart.jsx';
+import AIExampleBuilder from './AIExampleBuilder.jsx';
 import {
   Box,
   Flex,
@@ -1034,12 +1036,12 @@ export default function Playground() {
 
             <Tabs.Content value="emea-org-chart">
               <Box pt="5">
-                <Text size="2" color="gray">EMEA Org Chart content.</Text>
+                <EMEAOrgChart />
               </Box>
             </Tabs.Content>
 
             <Tabs.Content value="playground">
-              <Box py="8" style={{ minHeight: 200 }} />
+              <AIExampleBuilder />
             </Tabs.Content>
           </Tabs.Root>
         </Box>
