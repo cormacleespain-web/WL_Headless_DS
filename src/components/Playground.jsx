@@ -254,7 +254,16 @@ function DashboardExample() {
   );
 }
 
+/** Resolved token path to CSS value; use so theme token swatches update when AI/built-in theme changes. */
+function tokenValue(resolvedTokens, path, fallbackVar) {
+  const val = resolvedTokens[path];
+  if (val != null && typeof val === 'string' && (val.startsWith('#') || val.startsWith('rgb'))) return val;
+  return fallbackVar;
+}
+
 export default function Playground() {
+  const { resolvedTokens = {}, effectiveConfig } = useTheme();
+  const isDark = effectiveConfig?.appearance === 'dark';
   const [mainTab, setMainTab] = useState('examples');
   const [segment, setSegment] = useState('inbox');
   const [radioValue, setRadioValue] = useState('agree');
@@ -344,40 +353,50 @@ export default function Playground() {
           </AlertDialog.Root>
         </Section>
 
-        {/* Theme tokens — semantic colors & typography (all use token colors for dark mode) */}
+        {/* Theme tokens — semantic colors & typography (use resolved token values so they update when AI/built-in theme changes) */}
         <Section title="Theme tokens" docLink="">
           <Flex direction="column" gap="6">
             <Box>
-              <Text size="2" weight="bold" style={{ marginBottom: 8, display: 'block', color: 'var(--wz-color-semantic-fg-muted)' }}>Semantic colors</Text>
+              <Text size="2" weight="bold" style={{ marginBottom: 8, display: 'block', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.fg.muted', 'var(--wz-color-semantic-fg-muted)') }}>Semantic colors</Text>
               <Flex gap="2" wrap="wrap">
                 {[
-                  { label: 'fg.default', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-default)' },
-                  { label: 'fg.muted', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-muted)' },
-                  { label: 'fg.inverse', bg: 'var(--wz-color-semantic-fg-default)', color: 'var(--wz-color-semantic-fg-inverse)' },
-                  { label: 'bg.canvas', bg: 'var(--wz-color-semantic-bg-canvas)', color: 'var(--wz-color-semantic-fg-default)', border: '1px solid var(--wz-color-semantic-border-subtle)' },
-                  { label: 'bg.surface', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-default)', border: '1px solid var(--wz-color-semantic-border-subtle)' },
-                  { label: 'bg.surfaceAlt', bg: 'var(--wz-color-semantic-bg-surfaceAlt)', color: 'var(--wz-color-semantic-fg-default)', border: '1px solid var(--wz-color-semantic-border-subtle)' },
-                  { label: 'border', bg: 'var(--wz-color-semantic-bg-surface)', color: 'var(--wz-color-semantic-fg-default)', border: '2px solid var(--wz-color-semantic-border-default)' },
-                  { label: 'brand.primary', bg: 'var(--wz-color-semantic-brand-primary)', color: 'var(--wz-color-semantic-fg-inverse)' },
-                  { label: 'brand.primaryStrong', bg: 'var(--wz-color-semantic-brand-primaryStrong)', color: 'var(--wz-color-semantic-fg-inverse)' },
-                  { label: 'accent.blue', bg: 'var(--wz-color-semantic-accent-blueStrong)', color: 'var(--wz-color-semantic-fg-inverse)' },
-                  { label: 'highlight.lime', bg: 'var(--wz-color-semantic-accent-highlightLime)', color: 'var(--wz-color-semantic-fg-default)' },
-                ].map(({ label, bg, color, border }) => (
-                  <Box key={label} style={{ padding: '8px 12px', borderRadius: 'var(--radius-2)', background: bg, color, border }}>
-                    <Text size="1" weight="medium" style={{ color: 'inherit' }}>{label}</Text>
-                  </Box>
-                ))}
+                  { label: 'fg.default', bgPath: 'wizeline.tokens.color.semantic.bg.surface', colorPath: 'wizeline.tokens.color.semantic.fg.default' },
+                  { label: 'fg.muted', bgPath: 'wizeline.tokens.color.semantic.bg.surface', colorPath: 'wizeline.tokens.color.semantic.fg.muted' },
+                  { label: 'fg.inverse', bgPath: 'wizeline.tokens.color.semantic.fg.default', colorPath: 'wizeline.tokens.color.semantic.fg.inverse' },
+                  { label: 'bg.canvas', bgPath: 'wizeline.tokens.color.semantic.bg.canvas', colorPath: 'wizeline.tokens.color.semantic.fg.default', borderPath: 'wizeline.tokens.color.semantic.border.subtle' },
+                  { label: 'bg.surface', bgPath: 'wizeline.tokens.color.semantic.bg.surface', colorPath: 'wizeline.tokens.color.semantic.fg.default', borderPath: 'wizeline.tokens.color.semantic.border.subtle' },
+                  { label: 'bg.surfaceAlt', bgPath: 'wizeline.tokens.color.semantic.bg.surfaceAlt', colorPath: 'wizeline.tokens.color.semantic.fg.default', borderPath: 'wizeline.tokens.color.semantic.border.subtle' },
+                  { label: 'border', bgPath: 'wizeline.tokens.color.semantic.bg.surface', colorPath: 'wizeline.tokens.color.semantic.fg.default', borderPath: 'wizeline.tokens.color.semantic.border.default', borderWidth: 2 },
+                  { label: 'brand.primary', bgPath: 'wizeline.tokens.color.semantic.brand.primary', colorPath: 'wizeline.tokens.color.semantic.fg.inverse' },
+                  { label: 'brand.primaryStrong', bgPath: 'wizeline.tokens.color.semantic.brand.primaryStrong', colorPath: 'wizeline.tokens.color.semantic.fg.inverse' },
+                  { label: 'accent.blue', bgPath: 'wizeline.tokens.color.semantic.accent.blueStrong', colorPath: 'wizeline.tokens.color.semantic.fg.inverse' },
+                  // Dark mode: show highlight.mint (use fg.inverse so text is dark on bright mint); light: highlight.lime
+                  isDark
+                    ? { label: 'highlight.mint', bgPath: 'wizeline.tokens.color.semantic.accent.highlightMint', colorPath: 'wizeline.tokens.color.semantic.fg.inverse' }
+                    : { label: 'highlight.lime', bgPath: 'wizeline.tokens.color.semantic.accent.highlightLime', colorPath: 'wizeline.tokens.color.semantic.fg.default' },
+                ].map(({ label, bgPath, colorPath, borderPath, borderWidth = 1 }) => {
+                  const bg = tokenValue(resolvedTokens, bgPath, `var(--wz-color-semantic-${bgPath.replace(/^wizeline\.tokens\.color\.semantic\./, '').replace(/\./g, '-')})`);
+                  const color = tokenValue(resolvedTokens, colorPath, `var(--wz-color-semantic-${colorPath.replace(/^wizeline\.tokens\.color\.semantic\./, '').replace(/\./g, '-')})`);
+                  const border = borderPath
+                    ? `${borderWidth}px solid ${tokenValue(resolvedTokens, borderPath, `var(--wz-color-semantic-${borderPath.replace(/^wizeline\.tokens\.color\.semantic\./, '').replace(/\./g, '-')})`)}`
+                    : undefined;
+                  return (
+                    <Box key={label} style={{ padding: '8px 12px', borderRadius: 'var(--radius-2)', background: bg, color, border }}>
+                      <Text size="1" weight="medium" style={{ color: 'inherit' }}>{label}</Text>
+                    </Box>
+                  );
+                })}
               </Flex>
             </Box>
             <Box>
-              <Text size="2" weight="bold" style={{ marginBottom: 8, display: 'block', color: 'var(--wz-color-semantic-fg-muted)' }}>Typography (token-driven)</Text>
+              <Text size="2" weight="bold" style={{ marginBottom: 8, display: 'block', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.fg.muted', 'var(--wz-color-semantic-fg-muted)') }}>Typography (token-driven)</Text>
               <Flex direction="column" gap="3">
-                <Box style={{ fontFamily: 'var(--wz-typography-hero-medium-font-family)', fontSize: 'var(--wz-typography-hero-medium-font-size)', lineHeight: 'var(--wz-typography-hero-medium-line-height)', fontWeight: 'var(--wz-typography-hero-medium-font-weight)', color: 'var(--wz-color-semantic-fg-default)' }}>Hero medium — 80px Space Mono</Box>
-                <Box style={{ fontFamily: 'var(--wz-typography-title-large-font-family)', fontSize: 'var(--wz-typography-title-large-font-size)', lineHeight: 'var(--wz-typography-title-large-line-height)', color: 'var(--wz-color-semantic-fg-default)' }}>Title large — Page titles</Box>
-                <Box style={{ fontFamily: 'var(--wz-typography-sectionTitle-mediumBold-font-family)', fontSize: 'var(--wz-typography-sectionTitle-mediumBold-font-size)', lineHeight: 'var(--wz-typography-sectionTitle-mediumBold-line-height)', fontWeight: 'var(--wz-typography-sectionTitle-mediumBold-font-weight)', color: 'var(--wz-color-semantic-fg-default)' }}>Section title medium bold — Card titles</Box>
-                <Box style={{ fontFamily: 'var(--wz-typography-text-base-font-family)', fontSize: 'var(--wz-typography-text-base-font-size)', lineHeight: 'var(--wz-typography-text-base-line-height)', color: 'var(--wz-color-semantic-fg-default)' }}>Text base — Body content. Nunito Sans 16px.</Box>
-                <Box style={{ fontFamily: 'var(--wz-typography-text-xSmall-font-family)', fontSize: 'var(--wz-typography-text-xSmall-font-size)', color: 'var(--wz-color-semantic-fg-muted)' }}>Text xSmall — Small links, disclaimer, legal</Box>
-                <Box style={{ fontFamily: 'var(--wz-typography-accent-large-font-family)', fontSize: 'var(--wz-typography-accent-large-font-size)', letterSpacing: 'var(--wz-typography-accent-large-letter-spacing)', color: 'var(--wz-color-semantic-brand-primary)' }}>Accent large — Buttons, labels, tags</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-hero-medium-font-family)', fontSize: 'var(--wz-typography-hero-medium-font-size)', lineHeight: 'var(--wz-typography-hero-medium-line-height)', fontWeight: 'var(--wz-typography-hero-medium-font-weight)', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.fg.default', 'var(--wz-color-semantic-fg-default)') }}>Hero medium — 80px Space Mono</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-title-large-font-family)', fontSize: 'var(--wz-typography-title-large-font-size)', lineHeight: 'var(--wz-typography-title-large-line-height)', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.fg.default', 'var(--wz-color-semantic-fg-default)') }}>Title large — Page titles</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-sectionTitle-mediumBold-font-family)', fontSize: 'var(--wz-typography-sectionTitle-mediumBold-font-size)', lineHeight: 'var(--wz-typography-sectionTitle-mediumBold-line-height)', fontWeight: 'var(--wz-typography-sectionTitle-mediumBold-font-weight)', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.fg.default', 'var(--wz-color-semantic-fg-default)') }}>Section title medium bold — Card titles</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-text-base-font-family)', fontSize: 'var(--wz-typography-text-base-font-size)', lineHeight: 'var(--wz-typography-text-base-line-height)', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.fg.default', 'var(--wz-color-semantic-fg-default)') }}>Text base — Body content. Nunito Sans 16px.</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-text-xSmall-font-family)', fontSize: 'var(--wz-typography-text-xSmall-font-size)', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.fg.muted', 'var(--wz-color-semantic-fg-muted)') }}>Text xSmall — Small links, disclaimer, legal</Box>
+                <Box style={{ fontFamily: 'var(--wz-typography-accent-large-font-family)', fontSize: 'var(--wz-typography-accent-large-font-size)', letterSpacing: 'var(--wz-typography-accent-large-letter-spacing)', color: tokenValue(resolvedTokens, 'wizeline.tokens.color.semantic.brand.primary', 'var(--wz-color-semantic-brand-primary)') }}>Accent large — Buttons, labels, tags</Box>
               </Flex>
             </Box>
           </Flex>
